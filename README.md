@@ -81,7 +81,8 @@ The status pill at the top says what is live:
 | ZAFFICO rights issue (1-for-1 at K2.53, ex-rights 22 Jul 2026, offer extended to 18 Sep) | LuSE SENS 15 Jul, 17 Jul, 26 Aug 2026; IDC launch statement |
 | ZAFFICO 2025 EPS K1.29 (2024: K1.85), revenue targets | ZAFFICO 2025 abridged results; IDC |
 | CECZ EPS K1.58, dividend yield 6.77%, 52-week K14.00–K23.89 | Chuuma CECZ page, 14 Oct 2026 |
-| CECZ H1 2026 results (revenue US$380.3m, adj. EBITDA US$110.5m, PAT US$61.6m, no dividend) | CEC Plc half-year results, LuSE SENS 28 Aug 2026 |
+| CECZ H1 2026 results (revenue US$380.3m, adj. EBITDA US$110.5m, profit US$61.6m, receivables impairment US$7.2m) | CEC Plc half-year results, published 29 Aug 2026 |
+| CECZ 2026 interim dividend: US 4.0c (K0.7618) a share, declared 26 Aug; last day to trade cum 17 Nov, payment ~23 Nov 2026 | CEC Plc notice of dividend payment, issued 28 Aug 2026 |
 | Kwacha per US$: 22.19 (31 Dec 2025), 19.33 (9 Oct 2026) | EODHD closes, reported by The Rio Times |
 | CECZ 1 Jan 2026 price K19.30 | Derived: K16.86 on 8 Jun 2026 at −12.64% YTD (AfricanFinancials) |
 

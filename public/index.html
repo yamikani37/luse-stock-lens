@@ -176,7 +176,7 @@ footer a { color: inherit; }
         <ul class="list">
           <li>First-half 2026 revenue rose 5.6% to US$380m, and adjusted EBITDA rose 21.7% to US$110m.</li>
           <li>Profit after tax was flat at US$61.6m, held back by a US$7.2m receivables impairment.</li>
-          <li>No dividend was declared in the first half of 2026. CEC paid a US$63.4m interim dividend in 2025, so the trailing yield may not repeat.</li>
+          <li>On 26 August the board declared an interim dividend of US 4.0 cents a share (K0.7618 at the declaration-date rate), worth <b id="c-int"></b> of today's price. The last day to trade with the dividend is 17 November, and payment is due around 23 November.</li>
         </ul>
       </div>
     </div>
@@ -536,6 +536,7 @@ const REF = {
   },
   cecz: {
     eps2025: 1.58, dps: 1.032, high52: 23.89, low52: 14.00, // Chuuma CECZ page, 14 Oct 2026 (dps = 6.77% yield x K15.24)
+    interimDps2026: 0.7618, // US 4.0c declared 26 Aug 2026, in ZMW at the BoZ mid-rate (CEC dividend notice, 28 Aug 2026)
     jan1: 19.30,  // implied from K16.86 on 8 Jun 2026 at -12.64% YTD (AfricanFinancials)
     start: "2025-12-31", // date the jan1 price and fxJan1 stand for
     fxJan1: 22.19, fxNow: 19.33, fxNowDate: "2026-10-09", // ZMW per USD, EODHD via The Rio Times
@@ -717,6 +718,7 @@ function render() {
   set("c-usd", pct(((cq / fxNow) / (c.jan1 / c.fxJan1) - 1) * 100));
   set("c-pe", d3.format(".1f")(cq / c.eps2025));
   set("c-yield", pct((c.dps / cq) * 100, false));
+  set("c-int", pct((c.interimDps2026 / cq) * 100, false));
   set("c-range", K(c.low52) + "–" + d3.format(".2f")(c.high52));
 
   drawChart();
