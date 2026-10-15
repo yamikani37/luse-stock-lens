@@ -34,7 +34,7 @@ The "Econometric analysis" section of the page (the `Econ` script block in `publ
 - **CEC's elasticity to the exchange rate**, testing 0 (no link) against 1 (priced as a dollar asset). Needs 20 collected days.
 - **Volatility and likely price ranges**, which describe uncertainty, not direction.
 
-Each finding is labelled exact arithmetic, significant, not significant, estimate, or needs more data. Results that need more data fill in by themselves as the rows build up. The Method panel on the page gives the details, and the download button exports the data and results as JSON.
+Each finding is labelled exact arithmetic, significant, not significant, estimate, or needs more data. Formulas, decision rules and references are in [METHODOLOGY.md](METHODOLOGY.md). Results that need more data fill in by themselves as the rows build up. The Method panel on the page gives the details, and the download button exports the data and results as JSON.
 
 To inspect or reset the collected rows: `npx wrangler kv key get series --binding LENS --remote`.
 
