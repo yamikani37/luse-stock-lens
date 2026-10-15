@@ -1,0 +1,23 @@
+name = "luse-lens"
+main = "worker.js"
+compatibility_date = "2026-10-01"
+
+# The page. Requests for files in public/ are served directly; everything else goes to worker.js.
+[assets]
+directory = "public"
+
+[vars]
+ALLOWED_ORIGINS = "https://iamyami.com,https://yamikani37.github.io"
+EXCHANGE = "LuSE"
+
+# MANSA_API_KEY is a secret, set it with: npx wrangler secret put MANSA_API_KEY
+
+# Daily closes for the econometric analysis (the free API plan has no history).
+[[kv_namespaces]]
+binding = "LENS"
+id = "d19013ea09844640a52e261b177cd374"
+
+# 05:00 UTC = 07:00 in Lusaka, Tuesday to Saturday: saves the previous weekday's close
+# (Mansa's LuSE figures still show yesterday's session until the next one).
+[triggers]
+crons = ["0 5 * * 2-6"]

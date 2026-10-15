@@ -1,0 +1,915 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LuSE Stock Lens</title>
+<meta name="description" content="ZAFFICO and Copperbelt Energy on the Lusaka Securities Exchange, explained for investors. Built by Yamikani Phiri.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Source+Serif+4:opsz,wght@8..60,400;8..60,500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.9.0/d3.min.js"></script>
+<style>
+:root {
+  --bg: #f6f5f1; --panel: #ffffff; --fg: #1d1d1b; --muted: #6b6a64; --line: #e3e1d9;
+  --accent: #1f6f5c; --accent-2: #b5602a; --ref: #8a8880; --up: #1f7a4d; --down: #b3261e;
+  --grid: #eceae3; --tip: #ffffff; --shadow: 0 6px 24px rgba(0,0,0,.08);
+  --pos: #2f6db5; --neg: #c25a1c;
+  --sans: "Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --serif: "Source Serif 4", Georgia, serif;
+  --r: 12px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151513; --panel: #1e1e1b; --fg: #ecebe6; --muted: #a09e96; --line: #33322e;
+    --accent: #5cc4a6; --accent-2: #e59a63; --ref: #8d8b84; --up: #63c890; --down: #f08a80;
+    --grid: #2a2a27; --tip: #26261f; --shadow: 0 6px 24px rgba(0,0,0,.4);
+    --pos: #5b95d6; --neg: #cc7639;
+  }
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.5; -webkit-font-smoothing: antialiased; }
+.wrap { max-width: 72rem; margin: 0 auto; padding: 32px 16px 64px; display: flex; flex-direction: column; gap: 28px; }
+header h1 { font-family: var(--serif); font-weight: 400; font-size: clamp(1.8rem, 4vw, 2.6rem); line-height: 1.15; margin: 0 0 8px; letter-spacing: -.01em; }
+header p { margin: 0; color: var(--muted); max-width: 46rem; }
+.status { display: inline-flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); margin-top: 14px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--panel); }
+.status i { width: 8px; height: 8px; border-radius: 50%; background: var(--ref); }
+.status.live i { background: var(--up); box-shadow: 0 0 0 3px color-mix(in srgb, var(--up) 25%, transparent); }
+.status.snap i { background: var(--accent-2); }
+h2 { font-family: var(--serif); font-weight: 400; font-size: 1.5rem; margin: 0 0 6px; }
+.lede { color: var(--muted); margin: 0 0 16px; max-width: 48rem; }
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 14rem), 1fr)); gap: 14px; }
+.grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--r); padding: 20px; min-width: 0; }
+.card h3 { font-size: 15px; font-weight: 600; margin: 0; }
+.note { font-size: 12.5px; color: var(--muted); margin: 4px 0 14px; }
+.tile .label { font-size: 12.5px; color: var(--muted); }
+.tile .big { font-family: var(--serif); font-size: 2.1rem; line-height: 1.1; margin: 6px 0 4px; font-variant-numeric: tabular-nums; }
+.tile .sub { font-size: 12.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.up { color: var(--up); } .down { color: var(--down); }
+.tabs { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; gap: 2px; margin-bottom: 12px; background: var(--bg); }
+.tabs button { font: inherit; font-size: 13px; border: 0; background: transparent; color: var(--muted); padding: 6px 14px; border-radius: 999px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--panel); color: var(--fg); box-shadow: 0 1px 3px rgba(0,0,0,.08); }
+.chart { position: relative; min-height: 320px; }
+.chart svg { display: block; width: 100%; overflow: visible; }
+.chart text { font-family: var(--sans); font-size: 11.5px; fill: var(--muted); }
+.tip { position: absolute; pointer-events: none; background: var(--tip); border: 1px solid var(--line); border-radius: 8px; box-shadow: var(--shadow); padding: 6px 10px; font-size: 12.5px; white-space: nowrap; display: none; z-index: 2; }
+.tip .h { color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.legend i { width: 16px; border-top: 2px solid; }
+.legend i.dash { border-top-style: dashed; }
+.steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 8.5rem), 1fr)); gap: 10px; }
+.step { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.step .label { font-size: 12px; color: var(--muted); }
+.step .val { font-family: var(--serif); font-size: 1.35rem; font-variant-numeric: tabular-nums; }
+p.plain { margin: 14px 0 0; }
+.client { margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 7%, transparent); border-radius: 0 8px 8px 0; font-size: 14px; }
+.client b { font-weight: 600; }
+ul.list { margin: 8px 0 0; padding-left: 1.1rem; }
+ul.list li { margin-bottom: 6px; }
+table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+th { text-align: left; color: var(--muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
+td.n, th.n { text-align: right; }
+.decomp { position: relative; margin: 4px 0 6px; }
+.decomp svg { display: block; width: 100%; overflow: visible; }
+.decomp text { font-family: var(--sans); font-size: 12px; fill: var(--muted); }
+.decomp text.v { fill: var(--fg); font-variant-numeric: tabular-nums; }
+ul.findings { list-style: none; margin: 12px 0 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+ul.findings li { font-size: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
+.chip { display: inline-block; font-size: 11.5px; font-weight: 500; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; margin-bottom: 4px; }
+.chip::before { margin-right: 5px; }
+.chip.identity::before { content: "="; } .chip.sig::before { content: "✓"; } .chip.nsig::before { content: "○"; }
+.chip.est::before { content: "≈"; } .chip.need::before { content: "…"; }
+details.card summary { cursor: pointer; font-weight: 600; }
+details.card h4 { font-size: 14px; margin: 16px 0 4px; }
+details.card p { margin: 0 0 8px; font-size: 14px; }
+.btn { font: inherit; font-size: 13px; border: 1px solid var(--line); background: var(--panel); color: var(--fg); padding: 7px 14px; border-radius: 999px; cursor: pointer; }
+.btn:hover { border-color: var(--muted); }
+footer { font-size: 12.5px; color: var(--muted); border-top: 1px solid var(--line); padding-top: 16px; }
+footer a { color: inherit; }
+.skel { color: transparent !important; background: var(--grid); border-radius: 6px; animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: .55; } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>ZAFFICO &amp; Copperbelt Energy: what the prices are really saying</h1>
+    <p>Two LuSE stocks whose screen prices tell a misleading story. ZAFFICO's fall is mostly its rights issue showing up in the price. Copperbelt Energy's fall is partly the kwacha getting stronger, because CEC earns in US dollars.</p>
+    <div class="status" id="status"><i></i><span>Connecting to market data…</span></div>
+  </header>
+
+  <section>
+    <div class="tiles">
+      <div class="card tile"><div class="label">ZAFFICO (ZFCO)</div><div class="big skel" id="t-zfco">K0.00</div><div class="sub" id="t-zfco-sub">&nbsp;</div></div>
+      <div class="card tile"><div class="label">Copperbelt Energy (CECZ)</div><div class="big skel" id="t-cecz">K0.00</div><div class="sub" id="t-cecz-sub">&nbsp;</div></div>
+      <div class="card tile"><div class="label">LuSE All Share Index</div><div class="big skel" id="t-lasi">0.00</div><div class="sub" id="t-lasi-sub">&nbsp;</div></div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Price history</h3>
+    <p class="note" id="hist-note">&nbsp;</p>
+    <div class="tabs" role="tablist" id="tabs">
+      <button role="tab" aria-selected="true" data-t="ZFCO">ZAFFICO</button>
+      <button role="tab" aria-selected="false" data-t="CECZ">Copperbelt Energy</button>
+    </div>
+    <div class="legend" id="legend"></div>
+    <div class="chart" id="chart"></div>
+  </section>
+
+  <section>
+    <h2>ZAFFICO: the rights issue, explained</h2>
+    <p class="lede">ZAFFICO grows pine and eucalyptus plantations and is moving into wood manufacturing. In July it offered every shareholder one new share for each share held, at a deep discount, to fund that plan.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>The maths in three numbers</h3>
+        <p class="note">For a one-for-one offer, the share should settle near the average of the old price and the offer price.</p>
+        <div class="steps">
+          <div class="step"><div class="label">Price before the offer</div><div class="val" id="r-cum"></div></div>
+          <div class="step"><div class="label">Offer price, new share</div><div class="val" id="r-sub"></div></div>
+          <div class="step"><div class="label">Expected price after</div><div class="val" id="r-terp"></div></div>
+        </div>
+        <p class="plain">Through August the shares still changed hands around <b id="r-aug"></b>, roughly <b id="r-augp"></b> above that level, even though buyers no longer received the rights. Trading is thin, so the price only caught up in September. The latest price, <b id="r-last"></b>, is <b id="r-lastp"></b> that level.</p>
+        <div class="client"><b>For a client:</b> if you owned ZAFFICO before July and took up your rights, the drop on your screen overstates your loss. Judge it by your new share count, not the price alone. Like-for-like since 8 June, a holder who took up their rights is <b id="r-adj"></b>.</div>
+      </div>
+      <div class="card">
+        <h3>What the company is worth, by scenario</h3>
+        <p class="note">The take-up result was not published where we could find it, so today's share count is a range. Uses full-year 2025 earnings per share.</p>
+        <table id="val">
+          <thead><tr><th>Scenario</th><th class="n">Price</th><th class="n">Shares</th><th class="n">Value</th><th class="n">P/E</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <ul class="list">
+          <li>Management targets revenue growing from K460m (2025) to K1.8bn (2029), about <b id="r-cagr"></b> a year.</li>
+          <li>Earnings per share fell from K1.85 to K1.29 in 2025, and past profits have leaned on revaluing the trees, so cash earnings deserve a closer look.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Copperbelt Energy: a dollar business priced in kwacha</h2>
+    <p class="lede">CEC supplies power, mostly to copper mines in Zambia and the DRC. It reports in US dollars, but its shares trade in kwacha, so a stronger kwacha shrinks the kwacha value of the same dollar profits.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>This year, in kwacha vs in dollars</h3>
+        <p class="note">From the start of 2026 to the latest price. Exchange rate from EODHD closes as reported by The Rio Times.</p>
+        <div class="steps">
+          <div class="step"><div class="label">Share price, in kwacha</div><div class="val" id="c-zmw"></div></div>
+          <div class="step"><div class="label">Kwacha per US dollar</div><div class="val" id="c-fx"></div></div>
+          <div class="step"><div class="label">Share price, in dollars</div><div class="val" id="c-usd"></div></div>
+        </div>
+        <p class="plain">Much of the kwacha fall is the currency, not the business. In dollar terms the drop is much smaller, while dollar revenue rose and profit held flat in the first half.</p>
+        <div class="client"><b>For a client:</b> CEC is partly a currency position. If the kwacha keeps strengthening, the share can fall even while the business grows. If it weakens, the reverse.</div>
+      </div>
+      <div class="card">
+        <h3>Valuation and the latest results</h3>
+        <p class="note">Live price against full-year 2025 earnings, and first-half 2026 results.</p>
+        <div class="steps">
+          <div class="step"><div class="label">P/E</div><div class="val" id="c-pe"></div></div>
+          <div class="step"><div class="label">Dividend yield, trailing</div><div class="val" id="c-yield"></div></div>
+          <div class="step"><div class="label">52-week range</div><div class="val" id="c-range"></div></div>
+        </div>
+        <ul class="list">
+          <li>First-half 2026 revenue rose 5.6% to US$380m, and adjusted EBITDA rose 21.7% to US$110m.</li>
+          <li>Profit after tax was flat at US$61.6m, held back by a US$7.2m receivables impairment.</li>
+          <li>No dividend was declared in the first half of 2026. CEC paid a US$63.4m interim dividend in 2025, so the trailing yield may not repeat.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <h2>Econometric analysis: what is driving each price</h2>
+    <p class="lede">Every figure in this section is recalculated from the price data each time the page loads, using the same steps for both companies. Each price move is split into known effects, the market and a company-specific remainder, and the remainder is then tested against the stock's normal day-to-day noise. Each finding is labelled with how much weight it can bear.</p>
+    <div class="grid">
+      <div class="card">
+        <h3>ZAFFICO since the rights issue</h3>
+        <p class="note" id="e-zfco-note">&nbsp;</p>
+        <div class="decomp" id="e-zfco-chart"></div>
+        <ul class="findings" id="e-zfco-find"></ul>
+      </div>
+      <div class="card">
+        <h3>Copperbelt Energy this year</h3>
+        <p class="note" id="e-cecz-note">&nbsp;</p>
+        <div class="decomp" id="e-cecz-chart"></div>
+        <ul class="findings" id="e-cecz-find"></ul>
+      </div>
+    </div>
+  </section>
+
+  <section class="card">
+    <h3>Model estimates</h3>
+    <p class="note">Estimates that need more data fill in automatically as the Worker collects a price every trading day.</p>
+    <table id="e-stats">
+      <thead><tr><th>Measure</th><th class="n">ZAFFICO</th><th class="n">Copperbelt Energy</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p class="note" style="margin-top:12px">Likely range assumes recent volatility continues and no drift. It describes uncertainty, not a forecast of direction.</p>
+    <table id="e-range">
+      <thead><tr><th>Likely range</th><th class="n">ZAFFICO</th><th class="n">Copperbelt Energy</th></tr></thead>
+      <tbody></tbody>
+    </table>
+    <p style="margin:14px 0 0"><button class="btn" id="e-download">Download data and results (JSON)</button></p>
+  </section>
+
+  <details class="card">
+    <summary>Method</summary>
+    <h4>1. Split each move into its parts</h4>
+    <p>Log price changes add up, so a move can be split exactly. For ZAFFICO, from the last close before the rights issue: the dilution from issuing one share at K2.53 per old share (log of expected price after ÷ price before), the market, and a remainder. For Copperbelt Energy, from 1 January: the change in kwacha per dollar (CEC reports in dollars, so a stronger kwacha lowers its kwacha value one-for-one), the market, and a remainder.</p>
+    <h4>2. The market's share</h4>
+    <p>With at least 20 matched observations, the market's share uses a Dimson (1979) beta: the stock's returns are regressed on the LASI's returns over the same period, the period before and the period after, and the three betas are summed. This corrects the bias thin trading puts on an ordinary beta. Observations are weighted by the number of trading days they cover. With less data, beta is set to 1 (the market-adjusted model, Brown and Warner 1985).</p>
+    <h4>3. Is the remainder unusual?</h4>
+    <p>The company-specific remainder is divided by the stock's volatility scaled to the length of the window (z = remainder ÷ (daily volatility × √trading days)), and compared with a t distribution. Daily volatility is estimated from irregularly spaced prices, assuming variance grows with trading days. A big remainder that isn't significant means the stock is too volatile, or the data too thin, to call it more than noise.</p>
+    <h4>4. ZAFFICO: pull back towards the expected price</h4>
+    <p>A discrete Ornstein–Uhlenbeck regression on the log gap between the price and the theoretical ex-rights price, using prices since the ex-date: change in gap = −κ × trading days × previous gap. A significant κ &gt; 0 means gaps close over time, with half-life ln 2 ÷ κ. The expected price assumes full take-up of the new shares.</p>
+    <h4>5. Copperbelt Energy: is it priced in dollars?</h4>
+    <p>Once 20 matched days are collected, CEC's daily returns are regressed on the change in kwacha per dollar and on the LASI. An elasticity of 1 means the market prices CEC as a dollar asset; 0 means no currency link. Both are tested.</p>
+    <h4>Limits</h4>
+    <p>Before daily collection builds up, history comes from about 20 hand-collected closing prices per stock, so most tests have little power. LuSE holidays are treated as trading days. Thin trading makes prices stale, which understates volatility for stocks like CEC. Collected days where price and volume are both unchanged from the day before are treated as no fresh data. Nothing here is investment advice.</p>
+  </details>
+
+  <section class="card">
+    <h3>How this page works</h3>
+    <ul class="list">
+      <li>Prices load live from the Mansa Markets API through a small proxy that keeps the API key off this page and caches results for 30 minutes.</li>
+      <li>The proxy also saves each trading day's closing prices, the LASI and the kwacha rate, so the analysis gets sharper every day it runs.</li>
+      <li>If the live feed is unavailable, or full history is not on the current API plan, the page falls back to dated closing prices collected from LuSE, Mansa Markets and AfricanFinancials, and says so at the top.</li>
+      <li>Company figures come from LuSE filings, CEC's and ZAFFICO's results, IDC, and Chuuma's CECZ page.</li>
+      <li>Not investment advice. A demonstration of presenting market data clearly for clients.</li>
+    </ul>
+  </section>
+
+  <footer>Built by <a href="https://iamyami.com">Yamikani Phiri</a> · Data: Mansa Markets API, LuSE, AfricanFinancials, <a href="https://www.exchangerate-api.com">Rates by Exchange Rate API</a> · <span id="foot-time"></span></footer>
+</div>
+
+<script>
+// ===================== econometrics =====================
+// Pure functions: no DOM, no fetching. Econ.analyse() takes price series and reference
+// figures and returns numbers plus plain-English findings, each tagged with how much
+// weight it can bear. See the "Method" panel on the page for the reasoning.
+const Econ = (() => {
+  const MIN_REG = 20;  // matched intervals before a regression is reported
+  const MIN_OU = 10;   // post-event intervals before the reversion speed is reported
+  const MIN_VOL = 8;   // intervals before volatility is reported
+  const MIN_ZERO = 10; // collected daily rows before the zero-return share is reported
+
+  // ---------- distributions ----------
+  function lgamma(x) {
+    const c = [76.18009172947146, -86.50532032941677, 24.01409824083091, -1.231739572450155, 0.1208650973866179e-2, -0.5395239384953e-5];
+    let y = x, t = x + 5.5, s = 1.000000000190015;
+    t -= (x + 0.5) * Math.log(t);
+    for (const ci of c) s += ci / ++y;
+    return -t + Math.log((2.5066282746310005 * s) / x);
+  }
+  function betacf(a, b, x) {
+    const TINY = 1e-300, qab = a + b, qap = a + 1, qam = a - 1;
+    let c = 1, d = 1 - (qab * x) / qap;
+    if (Math.abs(d) < TINY) d = TINY;
+    d = 1 / d;
+    let h = d;
+    for (let m = 1; m <= 300; m++) {
+      const m2 = 2 * m;
+      let aa = (m * (b - m) * x) / ((qam + m2) * (a + m2));
+      d = 1 + aa * d; if (Math.abs(d) < TINY) d = TINY;
+      c = 1 + aa / c; if (Math.abs(c) < TINY) c = TINY;
+      d = 1 / d; h *= d * c;
+      aa = (-(a + m) * (qab + m) * x) / ((a + m2) * (qap + m2));
+      d = 1 + aa * d; if (Math.abs(d) < TINY) d = TINY;
+      c = 1 + aa / c; if (Math.abs(c) < TINY) c = TINY;
+      d = 1 / d;
+      const del = d * c; h *= del;
+      if (Math.abs(del - 1) < 3e-14) break;
+    }
+    return h;
+  }
+  function ibeta(x, a, b) {
+    if (x <= 0) return 0;
+    if (x >= 1) return 1;
+    const bt = Math.exp(lgamma(a + b) - lgamma(a) - lgamma(b) + a * Math.log(x) + b * Math.log(1 - x));
+    return x < (a + 1) / (a + b + 2) ? (bt * betacf(a, b, x)) / a : 1 - (bt * betacf(b, a, 1 - x)) / b;
+  }
+  // two-sided p-value of a t statistic
+  const tP = (t, df) => (isFinite(t) && df > 0 ? ibeta(df / (df + t * t), df / 2, 0.5) : NaN);
+
+  // ---------- calendar and series ----------
+  const iso = (d) => d.toISOString().slice(0, 10);
+  // weekdays in (a, b]; LuSE holidays are not modelled
+  function tradingDays(a, b) {
+    let n = 0;
+    const d = new Date(a + "T00:00:00Z"), e = new Date(b + "T00:00:00Z");
+    while (d < e) { d.setUTCDate(d.getUTCDate() + 1); const w = d.getUTCDay(); if (w > 0 && w < 6) n++; }
+    return n;
+  }
+  const clean = (s) => [...new Map((s || []).filter((p) => isFinite(p[1]) && p[1] > 0).map((p) => [p[0], p[1]])).entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1));
+  const asOf = (s, d) => { let r = null; for (const p of s) { if (p[0] <= d) r = p; else break; } return r; };
+  // back-adjust prices before an ex-date so returns don't show the mechanical drop
+  const adjust = (s, exDate, factor) => s.map(([d, v]) => [d, d < exDate ? v * factor : v]);
+
+  // log returns between consecutive observations; gap = trading days covered
+  function returns(s) {
+    const out = [];
+    for (let i = 1; i < s.length; i++) out.push({ d0: s[i - 1][0], d1: s[i][0], r: Math.log(s[i][1] / s[i - 1][1]), gap: Math.max(1, tradingDays(s[i - 1][0], s[i][0])) });
+    return out;
+  }
+  // returns of two series over the same intervals (dates both series have)
+  function matched(a, b) {
+    const mb = new Map(b), common = a.filter((p) => mb.has(p[0]));
+    const ra = returns(common), rb = returns(common.map((p) => [p[0], mb.get(p[0])]));
+    return ra.map((x, i) => ({ ...x, m: rb[i].r }));
+  }
+
+  // ---------- least squares ----------
+  function inv(A) {
+    const n = A.length, M = A.map((r, i) => [...r, ...r.map((_, j) => +(i === j))]);
+    for (let c = 0; c < n; c++) {
+      let p = c;
+      for (let r = c + 1; r < n; r++) if (Math.abs(M[r][c]) > Math.abs(M[p][c])) p = r;
+      if (Math.abs(M[p][c]) < 1e-14) return null;
+      [M[c], M[p]] = [M[p], M[c]];
+      const pv = M[c][c];
+      for (let j = 0; j < 2 * n; j++) M[c][j] /= pv;
+      for (let r = 0; r < n; r++) if (r !== c) { const f = M[r][c]; for (let j = 0; j < 2 * n; j++) M[r][j] -= f * M[c][j]; }
+    }
+    return M.map((r) => r.slice(n));
+  }
+  function ols(y, X) {
+    const n = y.length, k = X[0].length, df = n - k;
+    if (df < 1) return null;
+    const XtX = Array.from({ length: k }, (_, i) => Array.from({ length: k }, (_, j) => X.reduce((s, r) => s + r[i] * r[j], 0)));
+    const Xty = Array.from({ length: k }, (_, i) => X.reduce((s, r, t) => s + r[i] * y[t], 0));
+    const Q = inv(XtX);
+    if (!Q) return null;
+    const b = Q.map((r) => r.reduce((s, v, j) => s + v * Xty[j], 0));
+    const e = y.map((yi, t) => yi - X[t].reduce((s, v, j) => s + v * b[j], 0));
+    const s2 = e.reduce((s, v) => s + v * v, 0) / df;
+    const V = Q.map((r) => r.map((v) => v * s2));
+    const se = V.map((r, i) => Math.sqrt(r[i]));
+    const syy = y.reduce((s, v) => s + v * v, 0);
+    return { b, se, t: b.map((v, i) => v / se[i]), p: b.map((v, i) => tP(v / se[i], df)), V, df, n, r2: syy ? 1 - (s2 * df) / syy : NaN };
+  }
+  // estimate, standard error, t and p for a linear combination c'b, tested against h0
+  function lincom(fit, c, h0 = 0) {
+    const est = c.reduce((s, v, i) => s + v * fit.b[i], 0);
+    const se = Math.sqrt(c.reduce((s, ci, i) => s + c.reduce((s2, cj, j) => s2 + ci * fit.V[i][j] * cj, 0), 0));
+    const t = (est - h0) / se;
+    return { est, se, t, p: tP(t, fit.df), df: fit.df };
+  }
+
+  // ---------- estimators ----------
+  // Volatility from irregularly spaced returns, assuming variance grows with trading days.
+  function volatility(rets) {
+    if (rets.length < MIN_VOL) return { need: MIN_VOL, n: rets.length };
+    const daily = Math.sqrt(rets.reduce((s, x) => s + x.r * x.r, 0) / rets.reduce((s, x) => s + x.gap, 0));
+    return { daily, annual: daily * Math.sqrt(252), se: (daily * Math.sqrt(252)) / Math.sqrt(2 * rets.length), n: rets.length };
+  }
+  // Dimson (1979) beta: lag, same-interval and lead market returns, betas summed.
+  // Corrects the downward bias thin trading puts on an ordinary beta. Weighted by 1/sqrt(gap).
+  function dimsonBeta(stock, market) {
+    const m = matched(stock, market);
+    const rows = m.slice(1, -1).map((x, k) => ({ ...x, lag: m[k].m, lead: m[k + 2].m }));
+    if (rows.length < MIN_REG) return { need: MIN_REG, n: rows.length };
+    const w = rows.map((x) => 1 / Math.sqrt(x.gap));
+    const fit = ols(rows.map((x, i) => x.r * w[i]), rows.map((x, i) => [x.gap * w[i], x.lag * w[i], x.m * w[i], x.lead * w[i]]));
+    if (!fit) return { need: MIN_REG, n: rows.length };
+    return { ...lincom(fit, [0, 1, 1, 1]), n: rows.length, r2: fit.r2 };
+  }
+  // Elasticity of the kwacha share price to kwacha-per-dollar. 1 = priced like a dollar asset, 0 = no link.
+  function fxElasticity(stock, fx, market) {
+    const mf = new Map(fx), mm = new Map(market);
+    const common = stock.filter((p) => mf.has(p[0]) && mm.has(p[0]));
+    const rs = returns(common), rf = returns(common.map((p) => [p[0], mf.get(p[0])])), rm = returns(common.map((p) => [p[0], mm.get(p[0])]));
+    if (rs.length < MIN_REG) return { need: MIN_REG, n: rs.length };
+    const w = rs.map((x) => 1 / Math.sqrt(x.gap));
+    const fit = ols(rs.map((x, i) => x.r * w[i]), rs.map((x, i) => [x.gap * w[i], rf[i].r * w[i], rm[i].r * w[i]]));
+    if (!fit) return { need: MIN_REG, n: rs.length };
+    return { gamma: fit.b[1], se: fit.se[1], p0: fit.p[1], p1: tP((fit.b[1] - 1) / fit.se[1], fit.df), df: fit.df, n: rs.length };
+  }
+  // Discrete Ornstein-Uhlenbeck: does the log gap to an anchor price shrink over time?
+  // dg = -kappa * gap * g_prev + e, weighted by 1/sqrt(gap). Half-life = ln 2 / kappa trading days.
+  function reversion(s, anchor) {
+    const g = s.map(([d, v]) => [d, Math.log(v / anchor)]);
+    const rows = [];
+    for (let i = 1; i < g.length; i++) rows.push({ dg: g[i][1] - g[i - 1][1], prev: g[i - 1][1], gap: Math.max(1, tradingDays(g[i - 1][0], g[i][0])) });
+    if (rows.length < MIN_OU) return { need: MIN_OU, n: rows.length };
+    const fit = ols(rows.map((x) => x.dg / Math.sqrt(x.gap)), rows.map((x) => [Math.sqrt(x.gap) * x.prev]));
+    if (!fit) return { need: MIN_OU, n: rows.length };
+    const kappa = -fit.b[0];
+    return { kappa, se: fit.se[0], t: kappa / fit.se[0], p: fit.p[0], halfLife: kappa > 0 ? Math.LN2 / kappa : Infinity, n: rows.length, gapNow: g[g.length - 1][1] };
+  }
+  // Share of collected trading days with no price change (Lesmond, Ogden & Trzcinka 1999).
+  function zeroShare(daily) {
+    const r = returns(daily);
+    return r.length < MIN_ZERO ? { need: MIN_ZERO, n: r.length } : { share: r.filter((x) => x.r === 0).length / r.length, n: r.length };
+  }
+  // Zero-drift lognormal range: where the price would land with the given probability if it keeps its recent volatility.
+  const range = (price, daily, h, z) => [price * Math.exp(-z * daily * Math.sqrt(h)), price * Math.exp(z * daily * Math.sqrt(h))];
+
+  // Split a log price move into known effects, the market, and the company-specific rest,
+  // then test the rest against the stock's own volatility over the same number of trading days.
+  function attribute({ total, known, marketMove, beta, vol, days }) {
+    const market = beta.value * marketMove;
+    const rest = total - known.reduce((s, k) => s + k.value, 0) - market;
+    const parts = [...known, { key: "market", label: "Market (LASI)", value: market }, { key: "company", label: "Company-specific", value: rest }];
+    let test = null;
+    if (vol.daily) {
+      const z = rest / (vol.daily * Math.sqrt(days));
+      test = { z, p: tP(z, vol.n - 1), days };
+    }
+    return { total, parts, test, beta };
+  }
+
+  const pc = (l) => (Math.exp(l) - 1) * 100;
+  const fp = (v) => (v > 0 ? "+" : v < 0 ? "−" : "") + Math.abs(v).toFixed(1) + "%";
+  const fz = (z) => (z < 0 ? "−" : "") + Math.abs(z).toFixed(2);
+  // with few observations, a non-significant test is weak evidence; say so
+  const power = (vol) => (vol.n < 30 ? ` With only ${vol.n + 1} prices behind the volatility estimate, this test can only pick up large moves.` : "");
+  const fpv = (p) => (p < 0.001 ? "p < 0.001" : "p = " + p.toFixed(3));
+  const dd = (d) => new Date(d + "T00:00:00Z").toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
+  const need = (r, what) => ({ kind: "need", text: `${what} needs ${r.need} matched observations; there are ${r.n} so far. Each trading day the Worker collects adds one, so expect a result in about ${r.need - r.n + 1} trading days.` });
+  const betaFinding = (name, b) => b.need ? need(b, `${name}'s market beta`)
+    : { kind: b.p < 0.05 ? "sig" : "nsig", text: `${name}'s Dimson beta to the LASI is ${b.est.toFixed(2)} (standard error ${b.se.toFixed(2)}, ${fpv(b.p)}, ${b.n} observations). ${b.p < 0.05 ? "The share does move with the market." : "No reliable link to the market's moves yet."}` };
+  const volFinding = (name, v, price) => {
+    if (v.need) return need(v, `${name}'s volatility`);
+    const [lo, hi] = range(price, v.daily, 63, 1.2816);
+    return { kind: "est", text: `Annualised volatility is ${(v.annual * 100).toFixed(0)}% (± ${(v.se * 100).toFixed(0)} points). If that holds, there is an 80% chance the price is between K${lo.toFixed(2)} and K${hi.toFixed(2)} in three months. This is a range, not a direction: the model assumes no drift.` };
+  };
+  const pickBeta = (b) => (b.need ? { value: 1, how: "market-adjusted model (beta set to 1, the standard choice when there is too little data to estimate it)" } : { value: b.est, how: `market model (Dimson beta ${b.est.toFixed(2)})` });
+
+  // ---------- the whole analysis ----------
+  // series: { ZFCO, CECZ, LASI, FX } as [[date, value], ...]; daily: same keys, collected rows only
+  function analyse({ series, daily = {}, ref }) {
+    const S = Object.fromEntries(Object.entries(series).map(([k, v]) => [k, clean(v)]));
+    const L = S.LASI, out = { method: {} };
+
+    // ZAFFICO
+    {
+      const z = ref.zfco;
+      const terp = (z.cumRights * z.oldShares + z.offerPrice * z.newSharesMax) / (z.oldShares + z.newSharesMax);
+      const factor = terp / z.cumRights;
+      const raw = S.ZFCO, adj = adjust(raw, z.exDate, factor);
+      const cum = asOf(raw.filter((p) => p[0] < z.exDate), z.exDate), last = raw[raw.length - 1];
+      const vol = volatility(returns(adj));
+      const beta = dimsonBeta(adj, L);
+      const bu = pickBeta(beta);
+      const m0 = asOf(L, cum[0]), m1 = asOf(L, last[0]);
+      const att = attribute({
+        total: Math.log(last[1] / cum[1]),
+        known: [{ key: "rights", label: "Rights issue (dilution)", value: Math.log(factor) }],
+        marketMove: Math.log(m1[1] / m0[1]), beta: bu, vol, days: tradingDays(cum[0], last[0]),
+      });
+      const ou = reversion(raw.filter((p) => p[0] >= z.exDate), terp);
+      const [rights, mkt, co] = att.parts;
+      const f = [];
+      f.push({ kind: "identity", text: `From the last close before the rights issue (${dd(cum[0])}, K${cum[1].toFixed(2)}) to ${dd(last[0])} (K${last[1].toFixed(2)}), the price moved ${fp(pc(att.total))}. Issuing one new share at K${z.offerPrice.toFixed(2)} for each old share accounts for ${fp(pc(rights.value))} of that, which is ${Math.round((rights.value / att.total) * 100)}% of the move. The market accounts for ${fp(pc(mkt.value))}. The rest, ${fp(pc(co.value))}, is specific to ZAFFICO.` });
+      if (att.test) f.push({ kind: att.test.p < 0.05 ? "sig" : "nsig", text: `Is the ${fp(pc(co.value))} company-specific move unusual? Over ${att.test.days} trading days ZAFFICO's own volatility would typically move it ±${(vol.daily * Math.sqrt(att.test.days) * 100).toFixed(0)}%, so the move scores z = ${fz(att.test.z)} (${fpv(att.test.p)}). ${att.test.p < 0.05 ? "That is more than normal noise: something beyond the rights maths and the market has weighed on the price." : "That is within normal noise for this stock, so the rights issue and the market explain the fall without needing another cause."}${att.test.p < 0.05 ? "" : power(vol)}` });
+      f.push(ou.need ? need(ou, "The pull back towards the expected price")
+        : ou.p < 0.05 && ou.kappa > 0
+          ? { kind: "sig", text: `Since trading ex-rights, gaps between the price and K${terp.toFixed(2)} have closed with a half-life of about ${Math.round(ou.halfLife)} trading days (${fpv(ou.p)}, ${ou.n} observations). The price is now ${fp(pc(ou.gapNow))} from that level. If the pattern holds, half of today's gap closes in about ${Math.round(ou.halfLife)} trading days. K${terp.toFixed(2)} assumes every new share was taken up; with lower take-up the true level is higher.` }
+          : { kind: "nsig", text: `There is no statistically reliable pull back towards K${terp.toFixed(2)} since trading ex-rights (estimated speed ${ou.kappa.toFixed(3)} a day, ${fpv(ou.p)}). The price is ${fp(pc(ou.gapNow))} from that level and the data can't say it will close.` });
+      f.push(betaFinding("ZAFFICO", beta));
+      f.push(volFinding("ZAFFICO", vol, last[1]));
+      out.ZFCO = { window: [cum[0], last[0]], price: last[1], terp, factor, attribution: att, vol, beta, reversion: ou, zero: zeroShare(clean(daily.ZFCO)), findings: f, model: bu.how };
+    }
+
+    // Copperbelt Energy
+    {
+      const c = ref.cecz, raw = S.CECZ, last = raw[raw.length - 1];
+      const fx = S.FX, fx0 = asOf(fx, c.start), fx1 = asOf(fx, last[0]);
+      const vol = volatility(returns(raw));
+      const beta = dimsonBeta(raw, L);
+      const bu = pickBeta(beta);
+      const m0 = asOf(L, c.start), m1 = asOf(L, last[0]);
+      const att = attribute({
+        total: Math.log(last[1] / c.jan1),
+        known: [{ key: "fx", label: "Stronger kwacha", value: Math.log(fx1[1] / fx0[1]) }],
+        marketMove: Math.log(m1[1] / m0[1]), beta: bu, vol, days: tradingDays(c.start, last[0]),
+      });
+      const fxe = fxElasticity(raw, fx, L);
+      const [fxp, mkt, co] = att.parts;
+      const f = [];
+      f.push({ kind: "identity", text: `This year the price moved ${fp(pc(att.total))} in kwacha (K${c.jan1.toFixed(2)} to K${last[1].toFixed(2)}). The kwacha went from ${fx0[1].toFixed(2)} to ${fx1[1].toFixed(2)} per dollar, which accounts for ${fp(pc(fxp.value))}, or ${Math.round((fxp.value / att.total) * 100)}% of the move, if CEC is valued as a dollar business. The market accounts for ${fp(pc(mkt.value))}. The rest, ${fp(pc(co.value))}, is specific to CEC.` });
+      if (att.test) f.push({ kind: att.test.p < 0.05 ? "sig" : "nsig", text: `Is the ${fp(pc(co.value))} company-specific move unusual? Over ${att.test.days} trading days CEC's own volatility would typically move it ±${(vol.daily * Math.sqrt(att.test.days) * 100).toFixed(0)}%, so the move scores z = ${fz(att.test.z)} (${fpv(att.test.p)}). ${att.test.p < 0.05 ? "That is beyond normal noise: the business or sentiment towards it has weighed on the price, beyond the currency." : "That is within normal noise, so the currency and the market are enough to explain the fall."}${att.test.p < 0.05 ? "" : power(vol)}` });
+      f.push(fxe.need ? need(fxe, "Testing whether CEC is priced as a dollar asset")
+        : { kind: fxe.p0 < 0.05 ? "sig" : "nsig", text: `CEC's kwacha price moves ${fxe.gamma.toFixed(2)}% for each 1% move in kwacha per dollar (standard error ${fxe.se.toFixed(2)}, ${fxe.n} observations, controlling for the market). Test against no link: ${fpv(fxe.p0)}. Test against a pure dollar asset (1.0): ${fpv(fxe.p1)}. ${fxe.p0 < 0.05 && fxe.p1 >= 0.05 ? "Consistent with the market pricing CEC in dollars." : fxe.p0 < 0.05 ? "The currency matters, but less than one-for-one." : "No reliable currency link yet."}` });
+      f.push(betaFinding("CEC", beta));
+      f.push(volFinding("CEC", vol, last[1]));
+      out.CECZ = { window: [c.start, last[0]], price: last[1], fx: [fx0, fx1], attribution: att, vol, beta, fxElasticity: fxe, zero: zeroShare(clean(daily.CECZ)), findings: f, model: bu.how };
+    }
+    return out;
+  }
+
+  return { analyse, range, tradingDays, returns, matched, ols, volatility, dimsonBeta, fxElasticity, reversion, tP, MIN_REG };
+})();
+</script>
+
+<script>
+// ===================== configuration =====================
+const CONFIG = {
+  // The Worker serves this page and the API from the same address. Opened from disk, fall back to the
+  // deployed Worker (it only answers ALLOWED_ORIGINS, so the page then shows the bundled data).
+  proxyBase: location.protocol.startsWith("http") ? location.origin : "https://luse-lens.iamyami.workers.dev",
+  tickers: ["ZFCO", "CECZ"],
+  index: "LASI",
+  historyRange: "1Y",
+  baseDate: "2026-06-08", // comparison start for like-for-like returns
+};
+
+// ===================== reference data (sourced) =====================
+const REF = {
+  zfco: {
+    cumRights: 10.52,      // last close before ex-rights, 20-21 Jul 2026 (Mansa Markets)
+    offerPrice: 2.53,      // IDC launch statement
+    exDate: "2026-07-22",  // LuSE SENS 17 Jul 2026
+    oldShares: 400e6, newSharesMax: 400e6, // IPO prospectus; SENS 17 Jul 2026
+    eps2025: 1.29, rev2025: 460, rev2029: 1800, // 2025 results; IDC
+    events: [
+      { date: "2026-07-15", label: "Rights issue announced" },
+      { date: "2026-07-22", label: "Trades ex-rights" },
+      { date: "2026-09-18", label: "Offer closed (extended)" },
+      { date: "2026-09-25", label: "New shares listed (scheduled)" },
+    ],
+  },
+  cecz: {
+    eps2025: 1.58, dps: 1.032, high52: 23.89, low52: 14.00, // Chuuma CECZ page, 14 Oct 2026 (dps = 6.77% yield x K15.24)
+    jan1: 19.30,  // implied from K16.86 on 8 Jun 2026 at -12.64% YTD (AfricanFinancials)
+    start: "2025-12-31", // date the jan1 price and fxJan1 stand for
+    fxJan1: 22.19, fxNow: 19.33, fxNowDate: "2026-10-09", // ZMW per USD, EODHD via The Rio Times
+  },
+  lasiJan1: 25919.83, // LASI at 31 Dec 2025: 25,495.83 on 13 Oct less the -424.00 YTD change (Mansa /exchanges/LuSE)
+};
+
+// Snapshot: dated closes collected from LuSE, Mansa Markets and AfricanFinancials (see README for each source).
+const SNAPSHOT = {
+  ZFCO: [["2026-05-29",6.51],["2026-06-08",6.53],["2026-06-26",8.93],["2026-06-30",9.03],["2026-07-20",10.52],["2026-07-22",11.00],["2026-07-30",10.52],["2026-07-31",10.40],["2026-08-11",10.41],["2026-08-13",10.39],["2026-08-20",10.41],["2026-08-27",10.03],["2026-09-08",8.60],["2026-09-15",8.53],["2026-09-17",8.53],["2026-10-13",5.67]],
+  CECZ: [["2026-06-08",16.86],["2026-06-24",16.82],["2026-07-14",16.57],["2026-07-22",16.47],["2026-07-28",16.42],["2026-08-03",16.37],["2026-08-07",15.98],["2026-08-13",15.83],["2026-08-24",15.65],["2026-08-26",15.47],["2026-08-27",15.53],["2026-09-08",15.44],["2026-09-15",15.64],["2026-10-01",15.36],["2026-10-02",15.34],["2026-10-05",15.23],["2026-10-08",15.24],["2026-10-09",15.25],["2026-10-13",15.24]],
+  LASI: [["2026-06-08",25698.02],["2026-06-24",25737.41],["2026-07-14",25904.31],["2026-07-22",25761.35],["2026-07-31",25806.63],["2026-08-20",26494.80],["2026-09-01",26310.55],["2026-09-15",26098.44],["2026-10-01",25792.68],["2026-10-13",25495.83]],
+};
+
+// Previous session's close for the last snapshot day (LuSE Daily Stock Data, 13 Oct 2026: ZFCO -0.37, CECZ unchanged, LASI -89.06).
+const SNAPSHOT_PREV = { ZFCO: 6.04, CECZ: 15.24, LASI: 25584.89 };
+
+// ===================== API layer =====================
+// The proxy forwards to mansaapi.com. Field names are read defensively because
+// response shapes can differ between endpoints; adjust pick() lists if needed.
+const pick = (o, keys) => { for (const k of keys) if (o && o[k] != null && o[k] !== "") return o[k]; return undefined; };
+const unwrap = (j) => (j && (j.data && !Array.isArray(j.data) ? j.data : j)) || {};
+
+async function getJSON(path) {
+  const res = await fetch(CONFIG.proxyBase.replace(/\/$/, "") + path, { headers: { Accept: "application/json" } });
+  if (!res.ok) throw new Error(path + " → HTTP " + res.status);
+  return res.json();
+}
+async function liveQuote(path) {
+  const o = unwrap(await getJSON(path));
+  const price = Number(pick(o, ["price", "close", "last", "currentPrice", "value"]));
+  if (!isFinite(price)) throw new Error("no price in " + path);
+  return {
+    price,
+    changePct: Number(pick(o, ["change_pct", "changePercentage", "change_percentage", "change_percent", "percent_change"])),
+    asOf: pick(o, ["last_updated", "updated_at", "currentDateTime", "date", "timestamp"]),
+  };
+}
+// Index value from the exchange overview (/exchanges/LuSE); the value may be top-level or nested under "index".
+async function liveIndex() {
+  const o = unwrap(await getJSON("/exchange"));
+  const ix = o.index && typeof o.index === "object" ? o.index : o;
+  const price = Number(pick(ix, ["index_value", "indexValue", "value", "level", "close", "price"]));
+  if (!isFinite(price)) throw new Error("no index value in /exchange");
+  return {
+    price,
+    changePct: Number(pick(ix, ["index_change_pct", "change_pct", "changePercentage", "change_percentage", "change_percent", "percent_change"])),
+    asOf: pick(ix, ["scraped_at", "updated_at", "currentDateTime", "date", "timestamp"]) ?? pick(o, ["scraped_at", "updated_at", "currentDateTime", "date", "timestamp"]),
+  };
+}
+async function liveHistory(path) {
+  const j = await getJSON(path);
+  const arr = Array.isArray(j) ? j : pick(j, ["history", "data", "prices", "results", "rows"]);
+  if (!Array.isArray(arr) || arr.length < 2) throw new Error("no history in " + path);
+  return arr.map((r) => [String(pick(r, ["date", "day", "time", "timestamp"])).slice(0, 10), Number(pick(r, ["close", "price", "value", "c"]))])
+    .filter((p) => /^\d{4}-\d{2}-\d{2}$/.test(p[0]) && isFinite(p[1]))
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1));
+}
+
+// ===================== state =====================
+const state = { history: {}, quotes: {}, fx: [], daily: {}, live: { quotes: false, history: false }, active: "ZFCO" };
+
+const byDate = (a, b) => (a[0] < b[0] ? -1 : 1);
+const mergeSeries = (a, b) => [...new Map([...a, ...(b || [])]).entries()].sort(byDate);
+
+// Rows saved daily by the Worker's cron. A row whose price and volume (or index level) both match
+// the previous row is treated as no fresh data, e.g. a market holiday.
+function mergeCollected(rows) {
+  const prev = {};
+  const add = (k, d, v, sig) => {
+    const stale = prev[k] !== undefined && prev[k] === sig;
+    prev[k] = sig;
+    if (!stale) (state.daily[k] ||= []).push([d, v]);
+  };
+  for (const r of rows) {
+    for (const t of CONFIG.tickers) if (r[t] && isFinite(r[t][0])) add(t, r.d, r[t][0], r[t][1] == null ? r.d : r[t].join("|"));
+    if (isFinite(r.LASI)) add("LASI", r.d, r.LASI, String(r.LASI));
+    if (isFinite(r.FX)) (state.daily.FX ||= []).push([r.d, r.FX]);
+  }
+  for (const t of [...CONFIG.tickers, CONFIG.index]) state.history[t] = mergeSeries(state.history[t], state.daily[t]);
+  state.fx = mergeSeries(state.fx, state.daily.FX);
+}
+
+async function load() {
+  // start from the snapshot so the page is useful immediately
+  for (const t of [...CONFIG.tickers, CONFIG.index]) {
+    state.history[t] = SNAPSHOT[t].slice();
+    const last = SNAPSHOT[t][SNAPSHOT[t].length - 1];
+    state.quotes[t] = { price: last[1], changePct: NaN, asOf: last[0], prevClose: SNAPSHOT_PREV[t] };
+  }
+  state.fx = [[REF.cecz.start, REF.cecz.fxJan1], [REF.cecz.fxNowDate, REF.cecz.fxNow]];
+  render();
+  if (!CONFIG.proxyBase) return setStatus();
+
+  const results = await Promise.allSettled([
+    ...CONFIG.tickers.map((t) => liveQuote(`/stocks/${t}`).then((q) => (state.quotes[t] = q))),
+    liveIndex().catch(() => liveQuote(`/indices/${CONFIG.index}`)).then((q) => (state.quotes[CONFIG.index] = q)),
+  ]);
+  state.live.quotes = results.some((r) => r.status === "fulfilled");
+  try { mergeCollected(await getJSON("/collected")); } catch (e) { console.warn(e); }
+
+  const hist = await Promise.allSettled(CONFIG.tickers.map((t) => liveHistory(`/stocks/${t}/history?range=${CONFIG.historyRange}`).then((h) => (state.history[t] = h))));
+  state.live.history = hist.every((r) => r.status === "fulfilled");
+  [...results, ...hist].filter((r) => r.status === "rejected").forEach((r) => console.warn(r.reason));
+
+  // keep the latest live price at the end of the history line
+  for (const t of CONFIG.tickers) {
+    const q = state.quotes[t], h = state.history[t], today = new Date().toISOString().slice(0, 10);
+    if (state.live.quotes && q && isFinite(q.price) && h.length && h[h.length - 1][0] < today && h[h.length - 1][1] !== q.price && !state.live.history) h.push([String(q.asOf || today).slice(0, 10), q.price]);
+  }
+  render(); setStatus();
+}
+
+function setStatus() {
+  const el = document.getElementById("status");
+  const fmt = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", day: "numeric", month: "short" });
+  el.className = "status";
+  let text;
+  if (state.live.quotes && state.live.history) { el.classList.add("live"); text = "Live prices and history · Mansa Markets API"; }
+  else if (state.live.quotes) { el.classList.add("live"); text = "Live prices · history from collected closing prices"; }
+  else { el.classList.add("snap"); text = CONFIG.proxyBase ? "Live feed unavailable · showing collected closing prices" : "Showing collected closing prices (live feed not configured)"; }
+  el.querySelector("span").textContent = text;
+  document.getElementById("foot-time").textContent = "Loaded " + fmt.format(new Date());
+}
+
+// ===================== formatting =====================
+const K = (v) => "K" + d3.format(",.2f")(v);
+const pct = (v, signed = true) => (signed ? (v > 0 ? "+" : v < 0 ? "−" : "") : "") + d3.format(".1f")(Math.abs(v)) + "%";
+const day = (s) => d3.utcFormat("%-d %b")(new Date(String(s).slice(0, 10) + "T00:00:00Z"));
+const parse = (s) => new Date(s + "T00:00:00Z");
+const set = (id, v) => { const n = document.getElementById(id); n.textContent = v; n.classList.remove("skel"); };
+
+// ===================== render =====================
+function render() {
+  // tiles
+  const tile = (t, id, fmtv) => {
+    const q = state.quotes[t]; if (!q) return;
+    set(id, fmtv(q.price));
+    const sub = document.getElementById(id + "-sub"); sub.textContent = "";
+    let ch = q.changePct;
+    if (!isFinite(ch) && q.prevClose) ch = (q.price / q.prevClose - 1) * 100;
+    const span = document.createElement("span");
+    span.textContent = isFinite(ch) ? pct(ch) : "";
+    span.className = ch > 0 ? "up" : ch < 0 ? "down" : "";
+    sub.append(span, document.createTextNode((isFinite(ch) ? (state.live.quotes ? " today" : " vs previous close") + " · " : "") + (q.asOf ? "as of " + day(q.asOf) : "")));
+  };
+  tile("ZFCO", "t-zfco", K); tile("CECZ", "t-cecz", K); tile("LASI", "t-lasi", d3.format(",.2f"));
+
+  // ZAFFICO rights maths
+  const z = REF.zfco, zq = state.quotes.ZFCO.price;
+  const terp = (z.cumRights * z.oldShares + z.offerPrice * z.newSharesMax) / (z.oldShares + z.newSharesMax);
+  const factor = terp / z.cumRights;
+  const aug = state.history.ZFCO.filter((p) => p[0].startsWith("2026-08")).map((p) => p[1]);
+  set("r-cum", K(z.cumRights)); set("r-sub", K(z.offerPrice)); set("r-terp", K(terp));
+  set("r-aug", aug.length ? K(d3.mean(aug)) : "—"); set("r-augp", aug.length ? pct(d3.mean(aug) / terp * 100 - 100, false) : "—");
+  set("r-last", K(zq)); set("r-lastp", pct(Math.abs((zq / terp - 1) * 100), false) + (zq < terp ? " below" : " above"));
+  const base = state.history.ZFCO.find((p) => p[0] === CONFIG.baseDate);
+  set("r-adj", base ? (((zq / (base[1] * factor)) - 1) >= 0 ? "up " : "down ") + pct(Math.abs((zq / (base[1] * factor) - 1) * 100), false) : "—");
+  set("r-cagr", pct((Math.pow(z.rev2029 / z.rev2025, 1 / 4) - 1) * 100, false));
+  const rows = [
+    ["Before the rights issue", z.cumRights, z.oldShares],
+    ["Today, no new shares taken up", zq, z.oldShares],
+    ["Today, all new shares taken up", zq, z.oldShares + z.newSharesMax],
+  ];
+  d3.select("#val tbody").selectAll("tr").data(rows).join("tr").html("").each(function (r) {
+    const tr = d3.select(this), eps = (z.eps2025 * z.oldShares) / r[2];
+    tr.append("td").text(r[0]);
+    tr.append("td").attr("class", "n").text(K(r[1]));
+    tr.append("td").attr("class", "n").text(d3.format(",")(r[2] / 1e6) + "m");
+    tr.append("td").attr("class", "n").text("K" + d3.format(".2f")((r[1] * r[2]) / 1e9) + "bn");
+    tr.append("td").attr("class", "n").text(d3.format(".1f")(r[1] / eps));
+  });
+
+  // CEC
+  const c = REF.cecz, cq = state.quotes.CECZ.price;
+  set("c-zmw", pct((cq / c.jan1 - 1) * 100));
+  const fxNow = state.fx[state.fx.length - 1][1];
+  set("c-fx", K(fxNow).slice(1) + " (" + pct((fxNow / c.fxJan1 - 1) * 100) + ")");
+  set("c-usd", pct(((cq / fxNow) / (c.jan1 / c.fxJan1) - 1) * 100));
+  set("c-pe", d3.format(".1f")(cq / c.eps2025));
+  set("c-yield", pct((c.dps / cq) * 100, false));
+  set("c-range", K(c.low52) + "–" + d3.format(".2f")(c.high52));
+
+  drawChart();
+  renderAnalysis();
+}
+
+// ===================== econometric analysis =====================
+const KIND = { identity: "Exact arithmetic", sig: "Statistically significant", nsig: "Not statistically significant", est: "Estimate", need: "Needs more data" };
+const pv = (p) => (p < 0.001 ? "p < 0.001" : "p = " + p.toFixed(3));
+const needs = (r) => `needs ${r.need} obs. (has ${r.n})`;
+
+function runAnalysis() {
+  return Econ.analyse({
+    series: { ZFCO: state.history.ZFCO, CECZ: state.history.CECZ, LASI: [[REF.cecz.start, REF.lasiJan1], ...state.history.LASI], FX: state.fx },
+    daily: state.daily, ref: REF,
+  });
+}
+
+function renderAnalysis() {
+  let res;
+  try { res = runAnalysis(); } catch (e) { console.warn("analysis failed", e); return; }
+  state.analysis = res;
+  const yr = (d) => d3.utcFormat("%-d %b %Y")(parse(d));
+  for (const [t, id] of [["ZFCO", "zfco"], ["CECZ", "cecz"]]) {
+    const a = res[t];
+    document.getElementById(`e-${id}-note`).textContent = `${yr(a.window[0])} to ${yr(a.window[1])}. Market\u2019s share from the ${a.model}. Blue bars raised the price, orange bars lowered it; hover for detail.`;
+    const ul = document.getElementById(`e-${id}-find`); ul.innerHTML = "";
+    a.findings.forEach((f) => {
+      const li = document.createElement("li"), chip = document.createElement("span"), txt = document.createElement("div");
+      chip.className = "chip " + f.kind; chip.textContent = KIND[f.kind]; txt.textContent = f.text;
+      li.append(chip, txt); ul.append(li);
+    });
+  }
+  drawDecomps();
+
+  const z = res.ZFCO, c = res.CECZ;
+  const vol = (v) => (v.need ? needs(v) : `${(v.annual * 100).toFixed(0)}% ± ${(v.se * 100).toFixed(0)}`);
+  const beta = (b) => (b.need ? needs(b) : `${b.est.toFixed(2)} ± ${b.se.toFixed(2)} (${pv(b.p)})`);
+  const test = (a) => (a.attribution.test ? `${pct((Math.exp(a.attribution.parts.at(-1).value) - 1) * 100)}, z ${d3.format(".2f")(a.attribution.test.z).replace("-", "−")} (${pv(a.attribution.test.p)})` : "—");
+  const ou = (o) => (o.need ? needs(o) : o.p < 0.05 && o.kappa > 0 ? `half-life ${Math.round(o.halfLife)} trading days (${pv(o.p)})` : `no reliable pull (${pv(o.p)})`);
+  const fxe = (f) => (f.need ? needs(f) : `${f.gamma.toFixed(2)} ± ${f.se.toFixed(2)} (vs 0: ${pv(f.p0)}; vs 1: ${pv(f.p1)})`);
+  const zero = (r) => (r.need ? needs(r) : `${Math.round(r.share * 100)}% of ${r.n} days`);
+  const rows = [
+    ["Prices used", z.vol.n + 1, c.vol.n + 1],
+    ["Volatility, annualised", vol(z.vol), vol(c.vol)],
+    ["Market beta (Dimson)", beta(z.beta), beta(c.beta)],
+    ["Company-specific move, test", test(z), test(c)],
+    ["Pull back to K" + z.terp.toFixed(2), ou(z.reversion), "—"],
+    ["Elasticity to kwacha per dollar", "—", fxe(c.fxElasticity)],
+    ["Days with no price change", zero(z.zero), zero(c.zero)],
+  ];
+  d3.select("#e-stats tbody").selectAll("tr").data(rows).join("tr").html("").each(function (r) {
+    const tr = d3.select(this);
+    tr.append("td").text(r[0]); tr.append("td").attr("class", "n").text(r[1]); tr.append("td").attr("class", "n").text(r[2]);
+  });
+  const band = (a, h, zq) => (a.vol.daily ? Econ.range(a.price, a.vol.daily, h, zq).map(K).join(" – ") : "—");
+  const ranges = [["1 month, 80% chance", 21, 1.2816], ["1 month, 95% chance", 21, 1.96], ["3 months, 80% chance", 63, 1.2816], ["3 months, 95% chance", 63, 1.96]]
+    .map(([l, h, zq]) => [l, band(z, h, zq), band(c, h, zq)]);
+  d3.select("#e-range tbody").selectAll("tr").data(ranges).join("tr").html("").each(function (r) {
+    const tr = d3.select(this);
+    tr.append("td").text(r[0]); tr.append("td").attr("class", "n").text(r[1]); tr.append("td").attr("class", "n").text(r[2]);
+  });
+}
+
+function drawDecomps() {
+  if (!state.analysis) return;
+  drawDecomp(document.getElementById("e-zfco-chart"), state.analysis.ZFCO.attribution);
+  drawDecomp(document.getElementById("e-cecz-chart"), state.analysis.CECZ.attribution);
+}
+
+// Horizontal bars of log contributions (they add up to the total); labels show the price effect of each.
+function drawDecomp(el, att) {
+  el.innerHTML = "";
+  const rows = [{ label: "Total move", value: att.total, total: true }, ...att.parts];
+  const W = Math.max(el.clientWidth, 280), rowH = 30, barH = 14, H = rows.length * rowH + 8;
+  const eff = (l) => pct((Math.exp(l) - 1) * 100);
+  const svg = d3.select(el).append("svg").attr("viewBox", `0 0 ${W} ${H}`).attr("role", "img")
+    .attr("aria-label", rows.map((r) => `${r.label} ${eff(r.value)}`).join(", "));
+  const m = svg.append("g"); let lw = 0;
+  rows.forEach((r) => (lw = Math.max(lw, m.append("text").text(r.label).node().getComputedTextLength()))); m.remove();
+  const L = lw + 14, R = 8, lab = 52; // room for value labels either side
+  const vals = rows.map((r) => r.value);
+  const x = d3.scaleLinear([Math.min(0, ...vals), Math.max(0, ...vals)], [L + lab, W - R - lab]);
+  const x0 = x(0), g = svg.append("g");
+  const bar = (a, b, y) => {
+    const dir = b >= a ? 1 : -1, r = Math.min(4, Math.abs(b - a), barH / 2), e = b - dir * r;
+    return `M${a},${y}H${e}Q${b},${y} ${b},${y + r}V${y + barH - r}Q${b},${y + barH} ${e},${y + barH}H${a}Z`;
+  };
+  rows.forEach((r, i) => {
+    const yc = 4 + i * rowH + rowH / 2, xb = x(r.value);
+    g.append("text").attr("x", 0).attr("y", yc).attr("dy", ".32em").text(r.label).style("font-weight", r.total ? 600 : null);
+    if (Math.abs(xb - x0) >= 0.5) g.append("path").attr("d", bar(x0, xb, yc - barH / 2)).style("fill", r.total ? "var(--ref)" : r.value >= 0 ? "var(--pos)" : "var(--neg)");
+    g.append("text").attr("class", "v").attr("x", r.value >= 0 ? xb + 6 : xb - 6).attr("y", yc).attr("dy", ".32em").attr("text-anchor", r.value >= 0 ? "start" : "end").text(eff(r.value));
+    if (r.total) g.append("line").attr("x1", 0).attr("x2", W - R).attr("y1", 4 + rowH).attr("y2", 4 + rowH).style("stroke", "var(--line)");
+  });
+  g.append("line").attr("x1", x0).attr("x2", x0).attr("y1", 2).attr("y2", H - 2).style("stroke", "var(--muted)");
+
+  const tip = d3.select(el).append("div").attr("class", "tip");
+  svg.append("g").selectAll("rect").data(rows).join("rect")
+    .attr("x", 0).attr("width", W).attr("y", (_, i) => 4 + i * rowH).attr("height", rowH).style("fill", "transparent")
+    .on("pointermove", (ev, r) => {
+      const share = !r.total && Math.sign(r.value) === Math.sign(att.total) ? `${Math.round((r.value / att.total) * 100)}% of the total move` : r.total ? "sum of the rows below" : "worked against the total move";
+      tip.html(""); tip.append("div").attr("class", "h").text(r.label); tip.append("div").text(`${eff(r.value)} · ${share}`);
+      const [mx, my] = d3.pointer(ev, el), tw = tip.node().offsetWidth;
+      tip.style("display", "block").style("left", Math.min(Math.max(0, mx + 12), el.clientWidth - tw) + "px").style("top", (my + 14) + "px");
+    })
+    .on("pointerleave", () => tip.style("display", "none"));
+}
+
+document.getElementById("e-download").addEventListener("click", () => {
+  const blob = new Blob([JSON.stringify({
+    generated: new Date().toISOString(),
+    note: "Prices: Mansa Markets API (live and collected daily) plus hand-collected closes; see README for sources. Not investment advice.",
+    series: { ZFCO: state.history.ZFCO, CECZ: state.history.CECZ, LASI: state.history.LASI, FX_ZMW_per_USD: state.fx },
+    reference: REF, results: state.analysis,
+  }, null, 2)], { type: "application/json" });
+  const a = Object.assign(document.createElement("a"), { href: URL.createObjectURL(blob), download: `luse-analysis-${new Date().toISOString().slice(0, 10)}.json` });
+  a.click(); URL.revokeObjectURL(a.href);
+});
+
+// ===================== chart =====================
+function drawChart() {
+  const el = document.getElementById("chart");
+  el.innerHTML = "";
+  const t = state.active, h = state.history[t];
+  const pts = h.map((p) => ({ d: parse(p[0]), v: p[1] }));
+  const isZ = t === "ZFCO";
+  const terp = isZ ? (REF.zfco.cumRights * REF.zfco.oldShares + REF.zfco.offerPrice * REF.zfco.newSharesMax) / (REF.zfco.oldShares + REF.zfco.newSharesMax) : null;
+  const refs = isZ ? [{ y: terp, label: "Expected after rights " + K(terp), color: "var(--accent)" }]
+                   : [{ y: REF.cecz.high52, label: "52-week high", color: "var(--ref)" }, { y: REF.cecz.low52, label: "52-week low", color: "var(--ref)" }];
+  const events = isZ ? REF.zfco.events.map((e) => ({ d: parse(e.date), label: e.label })) : [];
+  const color = isZ ? "var(--accent-2)" : "var(--accent)";
+
+  document.getElementById("hist-note").textContent = (state.live.history ? "Daily closes from the Mansa Markets API." : "Closing prices on the dates we could source; points are joined by straight lines.") + (isZ ? " Dotted lines mark rights-issue dates; hover for details." : "");
+  const lg = document.getElementById("legend"); lg.innerHTML = "";
+  [[isZ ? "ZAFFICO price" : "CEC price", color, false], ...refs.slice(0, 1).map((r) => [isZ ? "Expected price after rights" : "52-week high / low", r.color, true])].forEach(([n, col, dash]) => {
+    const s = document.createElement("span"), i = document.createElement("i"); i.style.borderTopColor = col; if (dash) i.className = "dash"; s.append(i, document.createTextNode(n)); lg.append(s);
+  });
+
+  const W = Math.max(el.clientWidth, 280), H = 320, padB = 26;
+  const vals = [...pts.map((p) => p.v), ...refs.map((r) => r.y)];
+  let lo = d3.min(vals), hi = d3.max(vals); const pad = (hi - lo) * 0.08 || 1;
+  const y = d3.scaleLinear([lo - pad, hi + pad], [H - padB, 10]).nice();
+  const svg = d3.select(el).append("svg").attr("viewBox", `0 0 ${W} ${H}`);
+  const ticks = y.ticks(5), yf = (v) => "K" + d3.format(hi < 3 ? ".2f" : ".0f")(v);
+  let wMax = 0; const m = svg.append("g");
+  ticks.forEach((tk) => (wMax = Math.max(wMax, m.append("text").text(yf(tk)).node().getComputedTextLength()))); m.remove();
+  const L = wMax + 10, R = 8;
+  const x = d3.scaleUtc(d3.extent(pts, (p) => p.d), [L, W - R]);
+  const g = svg.append("g");
+  g.selectAll(".gl").data(ticks).join("line").attr("x1", L).attr("x2", W - R).attr("y1", y).attr("y2", y).style("stroke", "var(--grid)");
+  g.selectAll(".yl").data(ticks).join("text").attr("x", L - 8).attr("y", y).attr("dy", ".32em").attr("text-anchor", "end").text(yf);
+  const months = x.ticks(d3.utcMonth.every(1)); const step = Math.ceil(months.length / Math.max(2, Math.floor((W - L) / 60)));
+  g.selectAll(".xl").data(months.filter((_, i) => i % step === 0)).join("text").attr("x", x).attr("y", H - 6).attr("text-anchor", "middle").text(d3.utcFormat("%b"));
+  events.forEach((e) => { const ex = x(e.d); if (ex >= L && ex <= W - R) g.append("line").attr("x1", ex).attr("x2", ex).attr("y1", 10).attr("y2", H - padB).style("stroke", "var(--ref)").attr("stroke-dasharray", "2 3"); });
+  refs.forEach((r) => {
+    g.append("line").attr("x1", L).attr("x2", W - R).attr("y1", y(r.y)).attr("y2", y(r.y)).style("stroke", r.color).attr("stroke-dasharray", "6 4");
+    g.append("text").attr("x", W - R).attr("y", y(r.y) - 6).attr("text-anchor", "end").text(r.label);
+  });
+  g.append("path").datum(pts).attr("d", d3.line().x((p) => x(p.d)).y((p) => y(p.v))).style("fill", "none").style("stroke", color).attr("stroke-width", 2).attr("stroke-linejoin", "round").attr("stroke-linecap", "round");
+  if (pts.length < 80) g.selectAll(".pt").data(pts).join("circle").attr("cx", (p) => x(p.d)).attr("cy", (p) => y(p.v)).attr("r", 2.5).style("fill", color);
+
+  const tip = d3.select(el).append("div").attr("class", "tip");
+  const dot = g.append("circle").attr("r", 5).style("fill", color).style("stroke", "var(--panel)").attr("stroke-width", 2).style("display", "none");
+  svg.append("rect").attr("x", L).attr("width", W - L - R).attr("height", H - padB).style("fill", "transparent")
+    .on("pointermove", (ev) => {
+      const [mx] = d3.pointer(ev), sx = el.clientWidth / W;
+      const ne = d3.least(events, (e) => Math.abs(x(e.d) - mx));
+      tip.html("");
+      let px;
+      if (ne && Math.abs(x(ne.d) - mx) < 6) {
+        tip.append("div").attr("class", "h").text(d3.utcFormat("%-d %b %Y")(ne.d)); tip.append("div").text(ne.label);
+        dot.style("display", "none"); px = x(ne.d);
+      } else {
+        const p = d3.least(pts, (q) => Math.abs(x(q.d) - mx));
+        tip.append("div").attr("class", "h").text(d3.utcFormat("%-d %b %Y")(p.d)); tip.append("div").text(K(p.v));
+        dot.attr("cx", x(p.d)).attr("cy", y(p.v)).style("display", null); px = x(p.d);
+      }
+      tip.style("display", "block");
+      const tw = tip.node().offsetWidth;
+      tip.style("left", Math.min(Math.max(0, px * sx + 12), el.clientWidth - tw) + "px").style("top", "6px");
+    })
+    .on("pointerleave", () => { tip.style("display", "none"); dot.style("display", "none"); });
+}
+
+document.getElementById("tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("button"); if (!b) return;
+  state.active = b.dataset.t;
+  document.querySelectorAll("#tabs button").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+  drawChart();
+});
+let rt; addEventListener("resize", () => { clearTimeout(rt); rt = setTimeout(() => { drawChart(); drawDecomps(); }, 120); });
+load();
+</script>
+</body>
+</html>
